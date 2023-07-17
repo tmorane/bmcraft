@@ -1,8 +1,9 @@
 import { z } from "zod";
+
 import {
   createTRPCRouter,
-  protectedProcedure,
   publicProcedure,
+  protectedProcedure,
 } from "~/server/api/trpc";
 
 export const profileRouter = createTRPCRouter({
@@ -19,9 +20,7 @@ export const profileRouter = createTRPCRouter({
           followers:
             currentUserId == null
               ? undefined
-              : {
-                  where: { id: currentUserId },
-                },
+              : { where: { id: currentUserId } },
         },
       });
 
@@ -36,12 +35,10 @@ export const profileRouter = createTRPCRouter({
         isFollowing: profile.followers.length > 0,
       };
     }),
-
   toggleFollow: protectedProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ input: { userId }, ctx }) => {
       const currentUserId = ctx.session.user.id;
-
       const existingFollow = await ctx.prisma.user.findFirst({
         where: { id: userId, followers: { some: { id: currentUserId } } },
       });
@@ -58,9 +55,11 @@ export const profileRouter = createTRPCRouter({
           where: { id: userId },
           data: { followers: { disconnect: { id: currentUserId } } },
         });
-
         addedFollow = false;
       }
+
+      void ctx.revalidateSSG?.(`/profiles/${userId}`);
+      void ctx.revalidateSSG?.(`/profiles/${currentUserId}`);
 
       return { addedFollow };
     }),

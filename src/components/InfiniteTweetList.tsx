@@ -1,12 +1,11 @@
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import React from "react";
-import { VscHeart, VscHeartFilled } from "react-icons/vsc";
 import InfiniteScroll from "react-infinite-scroll-component";
-import { IconHoverEffect } from "~/components/IconHoverEffect";
-import { LoadingSpinner } from "~/components/LoadingSpinner";
-import { ProfileImage } from "~/components/ProfileImage";
+import { ProfileImage } from "./ProfileImage";
+import { VscHeart, VscHeartFilled } from "react-icons/vsc";
+import { IconHoverEffect } from "./IconHoverEffect";
 import { api } from "~/utils/api";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 type Tweet = {
   id: string;
@@ -20,7 +19,7 @@ type Tweet = {
 type InfiniteTweetListProps = {
   isLoading: boolean;
   isError: boolean;
-  hasMore: boolean;
+  hasMore: boolean | undefined;
   fetchNewTweets: () => Promise<unknown>;
   tweets?: Tweet[];
 };
@@ -30,10 +29,11 @@ export function InfiniteTweetList({
   isError,
   isLoading,
   fetchNewTweets,
-  hasMore,
+  hasMore = false,
 }: InfiniteTweetListProps) {
   if (isLoading) return <LoadingSpinner />;
   if (isError) return <h1>Error...</h1>;
+
   if (tweets == null || tweets.length === 0) {
     return (
       <h2 className="my-4 text-center text-2xl text-gray-500">No Tweets</h2>
@@ -43,15 +43,14 @@ export function InfiniteTweetList({
   return (
     <ul>
       <InfiniteScroll
+        dataLength={tweets.length}
         next={fetchNewTweets}
         hasMore={hasMore}
         loader={<LoadingSpinner />}
-        dataLength={tweets.length}
       >
         {tweets.map((tweet) => {
           return <TweetCard key={tweet.id} {...tweet} />;
         })}
-        ,
       </InfiniteScroll>
     </ul>
   );
@@ -63,15 +62,15 @@ const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
 
 function TweetCard({
   id,
+  user,
   content,
   createdAt,
   likeCount,
   likedByMe,
-  user,
 }: Tweet) {
   const trpcUtils = api.useContext();
   const toggleLike = api.tweet.toggleLike.useMutation({
-    onSuccess: ({ addedLike }: { addedLike: boolean }) => {
+    onSuccess: ({ addedLike }) => {
       const updateData: Parameters<
         typeof trpcUtils.tweet.infiniteFeed.setInfiniteData
       >[1] = (oldData) => {
@@ -92,18 +91,20 @@ function TweetCard({
                     likedByMe: addedLike,
                   };
                 }
+
                 return tweet;
               }),
             };
           }),
         };
       };
+
       trpcUtils.tweet.infiniteFeed.setInfiniteData({}, updateData);
       trpcUtils.tweet.infiniteFeed.setInfiniteData(
         { onlyFollowing: true },
         updateData
       );
-      trpcUtils.tweet.infiniteFeed.setInfiniteData(
+      trpcUtils.tweet.infiniteProfileFeed.setInfiniteData(
         { userId: user.id },
         updateData
       );
@@ -113,6 +114,7 @@ function TweetCard({
   function handleToggleLike() {
     toggleLike.mutate({ id });
   }
+
   return (
     <li className="flex gap-4 border-b px-4 py-4">
       <Link href={`/profiles/${user.id}`}>
@@ -144,8 +146,8 @@ function TweetCard({
 }
 
 type HeartButtonProps = {
-  isLoading: boolean;
   onClick: () => void;
+  isLoading: boolean;
   likedByMe: boolean;
   likeCount: number;
 };
@@ -183,8 +185,8 @@ function HeartButton({
           className={`transition-colors duration-200 ${
             likedByMe
               ? "fill-red-500"
-              : "group-hover:fill-500 fill-gray-500 group-focus-visible:fill-red-500"
-          } `}
+              : "fill-gray-500 group-hover:fill-red-500 group-focus-visible:fill-red-500"
+          }`}
         />
       </IconHoverEffect>
       <span>{likeCount}</span>

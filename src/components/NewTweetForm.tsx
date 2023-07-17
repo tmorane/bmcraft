@@ -6,13 +6,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { Button } from "~/components/Button";
-import { ProfileImage } from "~/components/ProfileImage";
 import { api } from "~/utils/api";
+import { Button } from "./Button";
+import { ProfileImage } from "./ProfileImage";
 
 function updateTextAreaSize(textArea?: HTMLTextAreaElement) {
   if (textArea == null) return;
-  textArea.style.height = "0px";
+  textArea.style.height = "0";
   textArea.style.height = `${textArea.scrollHeight}px`;
 }
 
@@ -38,13 +38,13 @@ function Form() {
   }, [inputValue]);
 
   const createTweet = api.tweet.create.useMutation({
-    onSuccess: ({ newTweet }: { newTweet: any }) => {
+    onSuccess: (newTweet) => {
       setInputValue("");
 
       if (session.status !== "authenticated") return;
 
-      trpcUtils.tweet.infiniteFeed.setInfiniteData({}, (oldData: any) => {
-        if (oldData == null || oldData.pages.length === 0) return;
+      trpcUtils.tweet.infiniteFeed.setInfiniteData({}, (oldData) => {
+        if (oldData == null || oldData.pages[0] == null) return;
 
         const newCacheTweet = {
           ...newTweet,
@@ -92,7 +92,7 @@ function Form() {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           className="flex-grow resize-none overflow-hidden p-4 text-lg outline-none"
-          placeholder="What's Happening?"
+          placeholder="What's happening?"
         />
       </div>
       <Button className="self-end">Tweet</Button>
